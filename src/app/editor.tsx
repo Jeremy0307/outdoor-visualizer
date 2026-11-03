@@ -36,6 +36,7 @@ export default function EditorScreen() {
   const [zones, setZones] = useState<Zone[]>([]);
   const [points, setPoints] = useState<Point[]>([]);
   const [strokes, setStrokes] = useState<Point[][]>([]);
+  const [redoStrokes, setRedoStrokes] = useState<Point[][]>([]);
   const pointsRef = useRef<Point[]>([]);
   const strokesRef = useRef<Point[][]>([]);
   const [drawing, setDrawing] = useState(false);
@@ -168,6 +169,7 @@ export default function EditorScreen() {
     if (finished.length > 1) {
       strokesRef.current = [...strokesRef.current, finished];
       setStrokes(strokesRef.current);
+      setRedoStrokes([]);
     }
 
     pointsRef.current = [];
@@ -181,8 +183,23 @@ export default function EditorScreen() {
     pointsRef.current = [];
     setPoints([]);
 
+    const last = strokesRef.current[strokesRef.current.length - 1];
+
+    if (!last) return;
+
     strokesRef.current = strokesRef.current.slice(0, -1);
     setStrokes(strokesRef.current);
+    setRedoStrokes((current) => [...current, last]);
+  }
+
+  function redoStroke() {
+    if (saving || redoStrokes.length === 0) return;
+
+    const last = redoStrokes[redoStrokes.length - 1];
+
+    strokesRef.current = [...strokesRef.current, last];
+    setStrokes(strokesRef.current);
+    setRedoStrokes((current) => current.slice(0, -1));
   }
 
   async function finishZone() {
@@ -211,6 +228,7 @@ export default function EditorScreen() {
       strokesRef.current = [];
       setPoints([]);
       setStrokes([]);
+                setRedoStrokes([]);
       setDrawing(false);
       activeStroke.current = false;
     } catch {
@@ -301,6 +319,14 @@ export default function EditorScreen() {
           </Pressable>
 
           <Pressable
+              style={styles.secondaryButton}
+              disabled={saving || redoStrokes.length === 0}
+              onPress={redoStroke}
+            >
+              <Text style={styles.secondaryText}>Rétablir</Text>
+            </Pressable>
+
+            <Pressable
             style={styles.primaryButton}
             disabled={saving || (points.length < 3 && strokes.length === 0)}
             onPress={() => void finishZone()}
